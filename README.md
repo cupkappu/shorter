@@ -1,61 +1,105 @@
-# Shorter · Next.js 简易短链
+# Shorter
 
-单一服务（Next.js）+ React UI，使用本地 JSON 存储短链映射，并提供单一密钥认证的 CRUD 界面。
+A lightweight, self-hosted URL shortener built with Next.js. Designed for simplicity, performance, and ease of deployment.
 
-## 准备
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Next.js](https://img.shields.io/badge/Next.js-14.0-black)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.0-38bdf8)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ed)
 
-1) 安装依赖
+## ✨ Features
+
+- **Zero Database Dependency**: Uses a robust local JSON storage system, making it incredibly easy to back up and migrate.
+- **Modern UI**: A clean, responsive dashboard built with React and **Tailwind CSS**.
+- **Secure Management**: Protected by a single API Key authentication mechanism.
+- **Custom Slugs**: Choose your own short URLs or let the system handle it.
+- **Full Control**: Create, Edit, and Delete links instantly.
+- **Docker Ready**: Production-ready Dockerfile and Compose configuration included.
+
+## 🛠 Tech Stack
+
+- **Framework**: [Next.js](https://nextjs.org/) (React)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Storage**: Local JSON File System
+- **Runtime**: Node.js
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/cupkappu/shorter.git
+   cd shorter
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configuration**
+   Copy the example environment file and set your secret key.
+   ```bash
+   cp .env.example .env.local
+   ```
+   Edit `.env.local` and set a strong `AUTH_KEY`:
+   ```env
+   AUTH_KEY=your-secure-secret-key
+   ```
+
+4. **Run Development Server**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Production Build
 
 ```bash
-npm install
+npm run build
+npm start
 ```
 
-2) 配置密钥：复制 `.env.example` 为 `.env.local` 并修改值
+## 🐳 Docker Deployment
+
+Shorter is designed to run anywhere Docker runs.
+
+### Using Docker CLI
 
 ```bash
-cp .env.example .env.local
-# 编辑 AUTH_KEY=your-secret
-```
-
-3) 运行
-
-```bash
-npm run dev   # 开发
-# 或
-npm run build && npm start  # 生产
-```
-
-打开 <http://localhost:3000>，在页面顶部填入同样的 API Key 即可进行操作。
-
-### Docker 运行
-
-```bash
-# 构建镜像
+# Build the image
 docker build -t shorter .
 
-# 直接运行（挂载数据目录）
-docker run -p 3000:3000 -e AUTH_KEY=your-secret -v $(pwd)/data:/app/data shorter
-
-# 或使用 compose
-AUTH_KEY=your-secret docker compose up --build
+# Run the container
+# Mount the /data volume to persist your links
+docker run -d \
+  -p 3000:3000 \
+  -e AUTH_KEY=your-secure-secret-key \
+  -v $(pwd)/data:/app/data \
+  --name shorter \
+  shorter
 ```
 
-## 功能
+### Using Docker Compose
 
-- 创建短链（可选自定义 slug）。
-- 更新指定 slug 的目标链接。
-- 删除指定 slug。
-- 列表展示与一键复制短链。
-- 访问 `/{slug}` 即可重定向到原始链接（无需密钥）。
+```bash
+# Start the service
+AUTH_KEY=your-secure-secret-key docker compose up -d
+```
 
-## API（需 `x-api-key` = `AUTH_KEY`）
+## 📖 Usage
 
-- `GET /api/links` — 列表
-- `POST /api/links` — 创建，body: `{ url, slug? }`
-- `PUT /api/links` — 更新，body: `{ slug, url }`
-- `DELETE /api/links` — 删除，body: `{ slug }`
+1. **Login**: Access the dashboard and enter the `AUTH_KEY` you configured.
+2. **Create**: Paste a long URL, optionally provide a custom slug (e.g., `my-link`), and click "Shorten".
+3. **Manage**: View your active links, edit destinations, or delete unused links directly from the dashboard.
+4. **Share**: Click the copy icon to grab your short link instantly.
 
-## 数据存储
+## 📄 License
 
-- 文件：`data/links.json`
-- 服务启动时自动创建/加载，无需外部数据库。
+This project is open-sourced software licensed under the [MIT license](LICENSE).
