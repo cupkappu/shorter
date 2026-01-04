@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+  shorter:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - AUTH_KEY=${AUTH_KEY:-change-me}
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

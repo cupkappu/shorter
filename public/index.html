@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shorter · 简易短链</title>
+  <link rel="preconnect" href="https://unpkg.com" />
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f6f8fb;
+      color: #1f2937;
+    }
+    body { margin: 0; }
+    .page {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 32px 16px 48px;
+    }
+    h1 { margin: 0 0 16px; font-size: 28px; }
+    p { margin: 0 0 8px; }
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      box-shadow: 0 12px 30px rgba(31, 41, 55, 0.08);
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      font-size: 16px;
+      box-sizing: border-box;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .row { display: grid; gap: 12px; grid-template-columns: 3fr 2fr; }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(120deg, #2563eb, #1d4ed8);
+      color: #fff;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.25);
+    }
+    .btn:active { transform: translateY(1px); box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25); }
+    .muted { color: #6b7280; font-size: 14px; }
+    .result { margin-top: 10px; padding: 12px; border-radius: 10px; background: #ecfdf3; border: 1px solid #bbf7d0; color: #14532d; }
+    .error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; }
+    th { font-size: 14px; color: #6b7280; font-weight: 700; }
+    code { background: #f3f4f6; padding: 3px 6px; border-radius: 6px; }
+    .link-row { display: flex; align-items: center; gap: 8px; }
+    .copy-btn {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 6px 10px;
+      background: #fff;
+      cursor: pointer;
+      transition: background 0.1s ease;
+    }
+    .copy-btn:hover { background: #f3f4f6; }
+    @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useEffect, useState } = React;
+
+    const shortUrl = (slug) => `${window.location.origin}/${slug}`;
+
+    const fetchLinks = async () => {
+      const res = await fetch('/api/links');
+      if (!res.ok) throw new Error('无法获取数据');
+      const data = await res.json();
+      return data.links || [];
+    };
+
+    function App() {
+      const [url, setUrl] = useState('');
+      const [slug, setSlug] = useState('');
+      const [message, setMessage] = useState('');
+      const [error, setError] = useState('');
+      const [recent, setRecent] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [created, setCreated] = useState(null);
+
+      const load = async () => {
+        try {
+          const list = await fetchLinks();
+          setRecent(list.sort((a, b) => a.slug.localeCompare(b.slug)));
+        } catch (err) {
+          setError(err.message || '加载失败');
+        }
+      };
+
+      useEffect(() => { load(); }, []);
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setMessage('');
+        setCreated(null);
+        setLoading(true);
+        try {
+          const res = await fetch('/api/shorten', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, slug: slug || undefined }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || '创建失败');
+          setCreated(data);
+          setMessage('短链已生成');
+          setUrl('');
+          setSlug('');
+          await load();
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const copy = async (text) => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setMessage('已复制到剪贴板');
+        } catch (err) {
+          setError('复制失败，可手动选择复制');
+        }
+      };
+
+      return (
+        <div className="page">
+          <h1>Shorter · 简易短链</h1>
+          <p className="muted">单一服务 / JSON 存储 / React 前端</p>
+
+          <div className="card">
+            <form onSubmit={handleSubmit}>
+              <label>原始链接</label>
+              <input
+                required
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="例如：https://example.com/awesome"
+              />
+              <p className="muted">自动补全 https://，支持自定义短链后缀（可选）。</p>
+
+              <div className="row" style={{ marginTop: 12, alignItems: 'end' }}>
+                <div>
+                  <label>自定义后缀（可选）</label>
+                  <input
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    placeholder="仅限字母、数字、-、_"
+                  />
+                </div>
+                <button className="btn" type="submit" disabled={loading}>
+                  {loading ? '生成中…' : '生成短链'}
+                </button>
+              </div>
+            </form>
+            {message && <div className="result">{message}</div>}
+            {error && <div className="result error">{error}</div>}
+            {created && (
+              <div className="result" style={{ marginTop: 10 }}>
+                <div className="link-row">
+                  <strong>短链：</strong>
+                  <a href={created.shortUrl} target="_blank" rel="noreferrer">{created.shortUrl}</a>
+                  <button className="copy-btn" type="button" onClick={() => copy(created.shortUrl)}>复制</button>
+                </div>
+                <div style={{ marginTop: 6 }} className="muted">指向：{created.url}</div>
+              </div>
+            )}
+          </div>
+
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>当前短链</h3>
+              <button className="copy-btn" type="button" onClick={load}>刷新</button>
+            </div>
+            {recent.length === 0 ? (
+              <p className="muted">还没有数据，先创建一个吧。</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>短链</th>
+                    <th>原始链接</th>
+                    <th style={{ width: 80 }}>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recent.map((item) => (
+                    <tr key={item.slug}>
+                      <td>
+                        <a href={shortUrl(item.slug)} target="_blank" rel="noreferrer">{shortUrl(item.slug)}</a>
+                      </td>
+                      <td>
+                        <a href={item.url} target="_blank" rel="noreferrer">{item.url}</a>
+                      </td>
+                      <td>
+                        <button className="copy-btn" type="button" onClick={() => copy(shortUrl(item.slug))}>复制</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
